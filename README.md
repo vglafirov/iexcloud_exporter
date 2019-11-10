@@ -4,7 +4,7 @@
 
 Export Stock data, provided by IEX Cloud to Prometheus
 
-To run it:
+To run it:\
 
 ```bash
 make
