@@ -39,8 +39,13 @@ func init() {
 }
 
 func main() {
+	kingpin.Flag("iexcloud.api_token", "PUBLISHABLE API Token for IEX Cloud account").String()
+
 	promlogConfig := &promlog.Config{}
 	flag.AddFlags(kingpin.CommandLine, promlogConfig)
+	kingpin.HelpFlag.Short('h')
+	kingpin.Parse()
 	logger := promlog.New(promlogConfig)
+
 	level.Info(logger).Log("msg", "Starting iexcloud_exporter", "version", version.Info())
 }
