@@ -1,6 +1,6 @@
 # IEX Cloud Prometheus Exporter
 
-[![Docker Pulls](https://img.shields.io/docker/pulls/vglafirov/iexcloud_exporter?style=plastic)]]
+![Docker Pulls](https://img.shields.io/docker/pulls/vglafirov/iexcloud_exporter?style=plastic)
 
 Export Stock data, provided by IEX Cloud to Prometheus
 
