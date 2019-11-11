@@ -54,6 +54,13 @@ var (
 		"Was the last query of iexcloud successful.",
 		nil, nil,
 	)
+
+	stockPrice = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "stock_price"),
+		"Current stock price",
+		[]string{"symbol"},
+		nil,
+	)
 )
 
 type promHTTPLogger struct {
@@ -65,24 +72,27 @@ func (l promHTTPLogger) Println(v ...interface{}) {
 }
 
 type iexcloudOpts struct {
-	endpoint string
-	apiToken string
+	endpoint   string
+	apiToken   string
+	apiVersion string
 }
 
 func (o iexcloudOpts) String() string {
-	return fmt.Sprintf(o.endpoint)
+	return fmt.Sprintf("Endpoint: %s\n API version: %s", o.endpoint, o.apiVersion)
 }
 
 // Describe describes all the metrics ever exported by the Consul exporter. It
 // implements prometheus.Collector.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- up
+	ch <- stockPrice
 }
 
 // Collect fetches the stats from configured Consul location and delivers them
 // as Prometheus metrics. It implements prometheus.Collector.
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
-	ok := true
+	ok := e.collectPriceMetric(ch)
+	level.Info(e.logger).Log("msg", "Collecting Price metric", "result", ok)
 
 	if ok {
 		ch <- prometheus.MustNewConstMetric(
@@ -93,6 +103,18 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			up, prometheus.GaugeValue, 0.0,
 		)
 	}
+}
+
+func (e *Exporter) collectPriceMetric(ch chan<- prometheus.Metric) bool {
+	price, err := e.client.Price("MSFT")
+	if err != nil {
+		level.Error(e.logger).Log("msg", "Can't query IEX Cloud API", "err", err)
+		return false
+	}
+	ch <- prometheus.MustNewConstMetric(
+		stockPrice, prometheus.GaugeValue, float64(price), "MSFT",
+	)
+	return true
 }
 
 // Exporter object
@@ -107,12 +129,14 @@ type Exporter struct {
 func NewExporter(opts iexcloudOpts, kvPrefix, kvFilter string, logger log.Logger) (*Exporter, error) {
 	endpoint := opts.endpoint
 	if !strings.Contains(endpoint, "://") {
-		endpoint = "http://" + endpoint
+		endpoint = "https://" + endpoint + "/" + opts.apiVersion + "/"
 	}
 	e, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("invalid iexcloud endpoint: %s", err)
 	}
+
+	level.Info(logger).Log("msg", "Initializing endpoint", "endpoint", e)
 
 	client := iex.NewClient(opts.apiToken, e.String())
 
@@ -140,7 +164,8 @@ func main() {
 	)
 
 	kingpin.Flag("iexcloud.api_token", "API Token for IEX Cloud account").Required().StringVar(&opts.apiToken)
-	kingpin.Flag("iexcloud.endpoint", "IEX Cloud API endpoint").Default("https://sandbox.iexapis.com/").StringVar(&opts.endpoint)
+	kingpin.Flag("iexcloud.endpoint", "IEX Cloud API endpoint").Default("sandbox.iexapis.com").StringVar(&opts.endpoint)
+	kingpin.Flag("iexcloud.api_version", "IEX Cloud API version").Default("stable").StringVar(&opts.apiVersion)
 
 	promlogConfig := &promlog.Config{}
 	flag.AddFlags(kingpin.CommandLine, promlogConfig)
@@ -178,7 +203,7 @@ func main() {
              <h1>Consul Exporter</h1>
              <p><a href='` + *metricsPath + `'>Metrics</a></p>
              <h2>Options</h2>
-             <pre>` + "opts.String()" + `</pre>
+             <pre>` + opts.String() + `</pre>
              </dl>
              <h2>Build</h2>
              <pre>` + version.Info() + ` ` + version.BuildContext() + `</pre>
