@@ -140,7 +140,7 @@ func main() {
 	)
 
 	kingpin.Flag("iexcloud.api_token", "API Token for IEX Cloud account").Required().StringVar(&opts.apiToken)
-	kingpin.Flag("iexcloud.endpoint", "IEX Cloud API endpoint").Default("http://localhost:8500").Required().StringVar(&opts.endpoint)
+	kingpin.Flag("iexcloud.endpoint", "IEX Cloud API endpoint").Default("https://sandbox.iexapis.com/").StringVar(&opts.endpoint)
 
 	promlogConfig := &promlog.Config{}
 	flag.AddFlags(kingpin.CommandLine, promlogConfig)
