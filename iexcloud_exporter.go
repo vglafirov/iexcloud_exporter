@@ -25,7 +25,9 @@ SOFTWARE.
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -75,6 +77,16 @@ type iexcloudOpts struct {
 	endpoint   string
 	apiToken   string
 	apiVersion string
+	configPath string
+}
+
+// Exporter object
+type Exporter struct {
+	client   *iex.Client
+	kvPrefix string
+	kvFilter *regexp.Regexp
+	logger   log.Logger
+	config   json.RawMessage
 }
 
 func (o iexcloudOpts) String() string {
@@ -106,23 +118,29 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (e *Exporter) collectPriceMetric(ch chan<- prometheus.Metric) bool {
-	price, err := e.client.Price("MSFT")
-	if err != nil {
-		level.Error(e.logger).Log("msg", "Can't query IEX Cloud API", "err", err)
-		return false
-	}
-	ch <- prometheus.MustNewConstMetric(
-		stockPrice, prometheus.GaugeValue, float64(price), "MSFT",
-	)
-	return true
-}
+	var config map[string]interface{}
 
-// Exporter object
-type Exporter struct {
-	client   *iex.Client
-	kvPrefix string
-	kvFilter *regexp.Regexp
-	logger   log.Logger
+	if err := json.Unmarshal(e.config, &config); err != nil {
+		level.Error(e.logger).Log("msg", "Cannot read JSON data", "err", err)
+	}
+
+	for _, metric := range config["metrics"].([]interface{}) {
+		if price, ok := metric.(map[string]interface{})["price"]; ok {
+			symbols := price.(map[string]interface{})["symbols"]
+			for _, symbol := range symbols.([]interface{}) {
+				level.Info(e.logger).Log("msg", "Collecting Price for", "symbol", symbol.(string))
+				p, err := e.client.Price(symbol.(string))
+				if err != nil {
+					level.Error(e.logger).Log("msg", "Can't query IEX Cloud API", "err", err)
+					return false
+				}
+				ch <- prometheus.MustNewConstMetric(
+					stockPrice, prometheus.GaugeValue, float64(p), symbol.(string),
+				)
+			}
+		}
+	}
+	return true
 }
 
 // NewExporter returns an initialized Exporter.
@@ -136,6 +154,19 @@ func NewExporter(opts iexcloudOpts, kvPrefix, kvFilter string, logger log.Logger
 		return nil, fmt.Errorf("invalid iexcloud endpoint: %s", err)
 	}
 
+	configFile, err := os.Open(opts.configPath)
+	if err != nil {
+		return nil, fmt.Errorf("Error opening config file: %s", err)
+	}
+	level.Info(logger).Log("msg", "Reading the config file", "config", opts.configPath)
+
+	defer configFile.Close()
+
+	config, err := ioutil.ReadAll(configFile)
+	if err != nil {
+		return nil, fmt.Errorf("Error reading config file: %s", err)
+	}
+
 	level.Info(logger).Log("msg", "Initializing endpoint", "endpoint", e)
 
 	client := iex.NewClient(opts.apiToken, e.String())
@@ -146,6 +177,7 @@ func NewExporter(opts iexcloudOpts, kvPrefix, kvFilter string, logger log.Logger
 		kvPrefix: kvPrefix,
 		kvFilter: regexp.MustCompile(kvFilter),
 		logger:   logger,
+		config:   config,
 	}, nil
 }
 
@@ -166,6 +198,8 @@ func main() {
 	kingpin.Flag("iexcloud.api_token", "API Token for IEX Cloud account").Required().StringVar(&opts.apiToken)
 	kingpin.Flag("iexcloud.endpoint", "IEX Cloud API endpoint").Default("sandbox.iexapis.com").StringVar(&opts.endpoint)
 	kingpin.Flag("iexcloud.api_version", "IEX Cloud API version").Default("stable").StringVar(&opts.apiVersion)
+	pwd, _ := os.Getwd()
+	kingpin.Flag("iexcloud.config", "IEX Cloud API version").Default(pwd + "/config.json").StringVar(&opts.configPath)
 
 	promlogConfig := &promlog.Config{}
 	flag.AddFlags(kingpin.CommandLine, promlogConfig)

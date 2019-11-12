@@ -1,0 +1,9 @@
+{
+  "metrics": [
+   {
+      "price" : {
+        "symbols": ["msft", "work", "googl"]
+      }
+   }
+ ]
+}
