@@ -1,10 +1,12 @@
 # IEX Cloud Prometheus Exporter
 
-[![Docker Pulls](https://img.shields.io/docker/pulls/vglafirov/iexcloud_exporter.svg?maxAge=604800)][hub]
+[![Docker Pulls](https://img.shields.io/docker/pulls/vglafirov/iexcloud_exporter.svg?maxAge=604800)](https://hub.docker.com/repository/docker/vglafirov/iexcloud_exporter)
 [![Go Report Card](https://goreportcard.com/badge/github.com/vglafirov/iexcloud_exporter)](https://goreportcard.com/report/github.com/vglafirov/iexcloud_exporter)
+
+
 Export Stock data, provided by IEX Cloud to Prometheus
 
-To run it:\
+To run it:
 
 ```bash
 make
