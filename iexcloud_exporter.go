@@ -33,6 +33,10 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
+
+	"github.com/vglafirov/iexcloud_exporter/pkg/config"
+	"github.com/vglafirov/iexcloud_exporter/pkg/model"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -46,22 +50,11 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-const (
-	namespace = "iexcloud"
-)
-
 var (
 	up = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "", "up"),
+		prometheus.BuildFQName(config.Namespace, "", "up"),
 		"Was the last query of iexcloud successful.",
 		nil, nil,
-	)
-
-	stockPrice = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "", "stock_price"),
-		"Current stock price",
-		[]string{"symbol"},
-		nil,
 	)
 )
 
@@ -82,7 +75,7 @@ type iexcloudOpts struct {
 
 // Exporter object
 type Exporter struct {
-	client   *iex.Client
+	Client   *iex.Client
 	kvPrefix string
 	kvFilter *regexp.Regexp
 	logger   log.Logger
@@ -97,14 +90,14 @@ func (o iexcloudOpts) String() string {
 // implements prometheus.Collector.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- up
-	ch <- stockPrice
+	ch <- config.Price
 }
 
 // Collect fetches the stats from configured Consul location and delivers them
 // as Prometheus metrics. It implements prometheus.Collector.
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
-	ok := e.collectPriceMetric(ch)
-	level.Info(e.logger).Log("msg", "Collecting Price metric", "result", ok)
+	ok := e.collectMetrics(ch)
+	level.Info(e.logger).Log("msg", "collecting metrics", "result", ok)
 
 	if ok {
 		ch <- prometheus.MustNewConstMetric(
@@ -117,29 +110,50 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	}
 }
 
-func (e *Exporter) collectPriceMetric(ch chan<- prometheus.Metric) bool {
-	var config map[string]interface{}
+func exists(m config.Metric, s string) bool {
+	_, ok := m[s]
+	return ok
+}
 
-	if err := json.Unmarshal(e.config, &config); err != nil {
-		level.Error(e.logger).Log("msg", "Cannot read JSON data", "err", err)
+func (e *Exporter) collectMetrics(ch chan<- prometheus.Metric) bool {
+	var cfg config.Config
+
+	if err := json.Unmarshal(e.config, &cfg); err != nil {
+		level.Error(e.logger).Log("msg", "cannot read JSON data", "err", err)
 	}
+	total := len(cfg.Metrics)
+	var wg sync.WaitGroup
+	wg.Add(total)
 
-	for _, metric := range config["metrics"].([]interface{}) {
-		if price, ok := metric.(map[string]interface{})["price"]; ok {
-			symbols := price.(map[string]interface{})["symbols"]
-			for _, symbol := range symbols.([]interface{}) {
-				level.Info(e.logger).Log("msg", "Collecting Price for", "symbol", symbol.(string))
-				p, err := e.client.Price(symbol.(string))
-				if err != nil {
-					level.Error(e.logger).Log("msg", "Can't query IEX Cloud API", "err", err)
-					return false
+	// Concurently collecting all the metrics
+	for count, m := range cfg.Metrics {
+		metric := m
+		go func(count int) {
+			defer wg.Done()
+			switch {
+			case exists(metric, "price"):
+				var price model.Price
+				price.Client = e.Client
+				price.Symbols = model.SetPriceParams(metric["price"])
+
+				level.Info(e.logger).Log("msg", "collecting Price for", "symbols", len(price.Symbols))
+
+				if err := price.API(ch); err != nil {
+					level.Error(e.logger).Log("msg", "cannot collect Price data", "err", err)
 				}
-				ch <- prometheus.MustNewConstMetric(
-					stockPrice, prometheus.GaugeValue, float64(p), symbol.(string),
-				)
+			case exists(metric, "dividends"):
+				msg := fmt.Sprintf("Metric: %v", metric["dividends"])
+				level.Info(e.logger).Log("msg", "collecting Price for", "metric", msg)
+			default:
+				level.Warn(e.logger).Log("msg", "no metrics configured")
 			}
-		}
+		}(count)
 	}
+
+	level.Info(e.logger).Log("msg", "waiting for metrics to be collected", "total", total)
+
+	wg.Wait()
+
 	return true
 }
 
@@ -167,13 +181,13 @@ func NewExporter(opts iexcloudOpts, kvPrefix, kvFilter string, logger log.Logger
 		return nil, fmt.Errorf("Error reading config file: %s", err)
 	}
 
-	level.Info(logger).Log("msg", "Initializing endpoint", "endpoint", e)
+	level.Info(logger).Log("msg", "initializing endpoint", "endpoint", e)
 
 	client := iex.NewClient(opts.apiToken, e.String())
 
 	// Init our exporter.
 	return &Exporter{
-		client:   client,
+		Client:   client,
 		kvPrefix: kvPrefix,
 		kvFilter: regexp.MustCompile(kvFilter),
 		logger:   logger,
@@ -207,12 +221,12 @@ func main() {
 	kingpin.Parse()
 	logger := promlog.New(promlogConfig)
 
-	level.Info(logger).Log("msg", "Starting iexcloud_exporter", "version", version.Info())
+	level.Info(logger).Log("msg", "starting iexcloud_exporter", "version", version.Info())
 	level.Info(logger).Log("build_context", version.BuildContext())
 
 	exporter, err := NewExporter(opts, *kvPrefix, *kvFilter, logger)
 	if err != nil {
-		level.Error(logger).Log("msg", "Error creating the exporter", "err", err)
+		level.Error(logger).Log("msg", "error creating the exporter", "err", err)
 		os.Exit(1)
 	}
 	prometheus.MustRegister(exporter)
@@ -245,9 +259,9 @@ func main() {
              </html>`))
 	})
 
-	level.Info(logger).Log("msg", "Listening on address", "address", *listenAddress)
+	level.Info(logger).Log("msg", "listening on address", "address", *listenAddress)
 	if err := http.ListenAndServe(*listenAddress, nil); err != nil {
-		level.Error(logger).Log("msg", "Error starting HTTP server", "err", err)
+		level.Error(logger).Log("msg", "error starting HTTP server", "err", err)
 		os.Exit(1)
 	}
 

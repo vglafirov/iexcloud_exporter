@@ -1,9 +1,28 @@
 {
   "metrics": [
-   {
-      "price" : {
-        "symbols": ["msft", "work", "googl"]
+    {
+      "price": {
+        "symbols": [
+          "msft",
+          "work",
+          "googl",
+          "aapl"
+        ]
       }
-   }
- ]
+    },
+    {
+      "dividends": {
+        "symbols": [
+          "msft",
+          "work",
+          "googl",
+          "aapl"
+        ],
+        "range": [
+          "1y",
+          "5y"
+        ]
+      }
+    }
+  ]
 }
