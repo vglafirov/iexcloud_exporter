@@ -24,20 +24,6 @@ SOFTWARE.
 
 package config
 
-import (
-	"github.com/prometheus/client_golang/prometheus"
-)
-
-var (
-	// Price Prometheus metric definition
-	Price = prometheus.NewDesc(
-		prometheus.BuildFQName(Namespace, "", "price"),
-		"Current stock price",
-		[]string{"symbol"},
-		nil,
-	)
-)
-
 const (
 	// Namespace Prometheus namespace
 	Namespace = "iexcloud"

@@ -30,22 +30,34 @@ import (
 	"github.com/vglafirov/iexcloud_exporter/pkg/config"
 )
 
+var (
+	// Price Prometheus metric definition
+	PriceMetric = prometheus.NewDesc(
+		prometheus.BuildFQName(config.Namespace, "", "price"),
+		"Current stock price",
+		[]string{"symbol"},
+		nil,
+	)
+)
+
 // Price data
 type Price struct {
 	Client  *iex.Client
 	Symbols []string
+	Price   float64
 }
 
 // API Price API call
 func (p *Price) API(ch chan<- prometheus.Metric) error {
 	for _, symbol := range p.Symbols {
-		price, err := p.Client.Price(symbol)
+		var err error
+		p.Price, err = p.Client.Price(symbol)
 		if err != nil {
 			return err
 
 		}
 		ch <- prometheus.MustNewConstMetric(
-			config.Price, prometheus.GaugeValue, float64(price), symbol,
+			PriceMetric, prometheus.GaugeValue, float64(p.Price), symbol,
 		)
 	}
 	return nil

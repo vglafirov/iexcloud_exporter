@@ -40,7 +40,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	iex "github.com/goinvest/iexcloud"
+	iex "github.com/vglafirov/iexcloud"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -90,7 +90,8 @@ func (o iexcloudOpts) String() string {
 // implements prometheus.Collector.
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- up
-	ch <- config.Price
+	ch <- model.PriceMetric
+	ch <- model.DividendsMetric
 }
 
 // Collect fetches the stats from configured Consul location and delivers them
@@ -142,8 +143,15 @@ func (e *Exporter) collectMetrics(ch chan<- prometheus.Metric) bool {
 					level.Error(e.logger).Log("msg", "cannot collect Price data", "err", err)
 				}
 			case exists(metric, "dividends"):
-				msg := fmt.Sprintf("Metric: %v", metric["dividends"])
-				level.Info(e.logger).Log("msg", "collecting Price for", "metric", msg)
+				var dividends model.Dividend
+				dividends.Client = e.Client
+				level.Info(e.logger).Log("msg", "collecting dividents metrics")
+				if err := model.SetDividendsParams(&dividends, metric["dividends"]); err != nil {
+					level.Error(e.logger).Log("msg", "cannot collect Dividends data", "err", err)
+				}
+				if err := dividends.API(ch); err != nil {
+					level.Error(e.logger).Log("msg", "cannot collect dividends data", "err", err)
+				}
 			default:
 				level.Warn(e.logger).Log("msg", "no metrics configured")
 			}
