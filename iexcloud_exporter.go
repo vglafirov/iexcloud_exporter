@@ -40,7 +40,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	iex "github.com/vglafirov/iexcloud"
+	iex "github.com/goinvest/iexcloud"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"

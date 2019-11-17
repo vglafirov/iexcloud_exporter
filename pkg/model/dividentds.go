@@ -26,7 +26,7 @@ package model
 
 import (
 	"fmt"
-	iex "github.com/vglafirov/iexcloud"
+	iex "github.com/goinvest/iexcloud"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/vglafirov/iexcloud_exporter/pkg/config"
 )
