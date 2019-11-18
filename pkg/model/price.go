@@ -25,13 +25,13 @@ SOFTWARE.
 package model
 
 import (
-	iex "github.com/goinvest/iexcloud"
+	iex "github.com/vglafirov/iexcloud"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/vglafirov/iexcloud_exporter/pkg/config"
 )
 
 var (
-	// Price Prometheus metric definition
+	// PriceMetric Prometheus metric definition
 	PriceMetric = prometheus.NewDesc(
 		prometheus.BuildFQName(config.Namespace, "", "price"),
 		"Current stock price",
