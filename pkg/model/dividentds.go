@@ -26,9 +26,10 @@ package model
 
 import (
 	"fmt"
-	iex "github.com/goinvest/iexcloud"
 	"github.com/prometheus/client_golang/prometheus"
+	iex "github.com/vglafirov/iexcloud"
 	"github.com/vglafirov/iexcloud_exporter/pkg/config"
+	"strconv"
 )
 
 var (
@@ -59,10 +60,15 @@ func (d *Dividend) API(ch chan<- prometheus.Metric) error {
 			}
 			d.Dividends = div
 			for _, dividend := range d.Dividends {
+				var amount float64
+				var err error
+				if amount, err = strconv.ParseFloat(dividend.Amount, 64); err != nil {
+					return err
+				}
 				ch <- prometheus.MustNewConstMetric(
 					DividendsMetric,
 					prometheus.GaugeValue,
-					dividend.Amount,
+					amount,
 					symbol,
 					string(pathRange),
 					fmt.Sprintf("%v", dividend.ExDate),
