@@ -25,11 +25,13 @@ SOFTWARE.
 package model
 
 import (
-	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/prometheus/client_golang/prometheus"
+	// TODO: Replace with github.com/goinvest/iexcloud once https://github.com/goinvest/iexcloud/issues/41 is closed
 	iex "github.com/vglafirov/iexcloud"
 	"github.com/vglafirov/iexcloud_exporter/pkg/config"
-	"strconv"
 )
 
 var (
@@ -37,7 +39,14 @@ var (
 	DividendsMetric = prometheus.NewDesc(
 		prometheus.BuildFQName(config.Namespace, "", "dividends"),
 		"dividends from the IEX Cloud endpoint for the given stock symbol and the given date range",
-		[]string{"symbol", "range"},
+		[]string{
+			"symbol",
+			"range",
+			"exDate",
+			"paymentDate",
+			"recordDate",
+			"declaredDate",
+		},
 		nil,
 	)
 )
@@ -65,13 +74,29 @@ func (d *Dividend) API(ch chan<- prometheus.Metric) error {
 				if amount, err = strconv.ParseFloat(dividend.Amount, 64); err != nil {
 					return err
 				}
+				var exdate, paymentDate, recordDate, declaredDate []byte
+				if exdate, err = dividend.ExDate.MarshalJSON(); err != nil {
+					return err
+				}
+				if paymentDate, err = dividend.PaymentDate.MarshalJSON(); err != nil {
+					return err
+				}
+				if recordDate, err = dividend.RecordDate.MarshalJSON(); err != nil {
+					return err
+				}
+				if declaredDate, err = dividend.DeclaredDate.MarshalJSON(); err != nil {
+					return err
+				}
 				ch <- prometheus.MustNewConstMetric(
 					DividendsMetric,
 					prometheus.GaugeValue,
 					amount,
 					symbol,
-					string(pathRange),
-					fmt.Sprintf("%v", dividend.ExDate),
+					pathRange.String(),
+					strings.Trim(string(exdate), `"`),
+					strings.Trim(string(paymentDate), `"`),
+					strings.Trim(string(recordDate), `"`),
+					strings.Trim(string(declaredDate), `"`),
 				)
 			}
 		}

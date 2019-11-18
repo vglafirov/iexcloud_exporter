@@ -40,6 +40,7 @@ import (
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
+	// TODO: Replace with github.com/goinvest/iexcloud once https://github.com/goinvest/iexcloud/issues/41 is closed
 	iex "github.com/vglafirov/iexcloud"
 
 	"github.com/prometheus/client_golang/prometheus"
