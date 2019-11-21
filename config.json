@@ -23,6 +23,16 @@
           "5y"
         ]
       }
+    },
+    {
+      "keystats": {
+        "symbols": [
+          "msft",
+          "work",
+          "googl",
+          "aapl"
+        ]
+      }
     }
   ]
 }

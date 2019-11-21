@@ -93,6 +93,32 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- up
 	ch <- model.PriceMetric
 	ch <- model.DividendsMetric
+	ch <- model.MarketcapStatsMetric
+	ch <- model.Week52High
+	ch <- model.Week52Low
+	ch <- model.Week52Change
+	ch <- model.SharesOutstanding
+	ch <- model.Avg30Volume
+	ch <- model.Avg10Volume
+	ch <- model.Float
+	ch <- model.Employees
+	ch <- model.TTMEPS
+	ch <- model.TTMDividendRate
+	ch <- model.DividendYield
+	ch <- model.PERatio
+	ch <- model.Beta
+	ch <- model.Day200MovingAvg
+	ch <- model.Day50MovingAvg
+	ch <- model.MaxChangePercent
+	ch <- model.Year5ChangePercent
+	ch <- model.Year2ChangePercent
+	ch <- model.Year1ChangePercent
+	ch <- model.YTDChangePercent
+	ch <- model.Month6ChangePercent
+	ch <- model.Month3ChangePercent
+	ch <- model.Month1ChangePercent
+	ch <- model.Day30ChangePercent
+	ch <- model.Day5ChangePercent
 }
 
 // Collect fetches the stats from configured Consul location and delivers them
@@ -152,6 +178,16 @@ func (e *Exporter) collectMetrics(ch chan<- prometheus.Metric) bool {
 				}
 				if err := dividends.API(ch); err != nil {
 					level.Error(e.logger).Log("msg", "cannot collect dividends data", "err", err)
+				}
+			case exists(metric, "keystats"):
+				var keystats model.KeyStats
+				keystats.Client = e.Client
+				level.Info(e.logger).Log("msg", "collecting keystats metrics")
+				if err := model.SetKeyStatsParams(&keystats, metric["keystats"]); err != nil {
+					level.Error(e.logger).Log("msg", "cannot collect Key Stats data", "err", err)
+				}
+				if err := keystats.API(ch); err != nil {
+					level.Error(e.logger).Log("msg", "cannot collect keystats data", "err", err)
 				}
 			default:
 				level.Warn(e.logger).Log("msg", "no metrics configured")
