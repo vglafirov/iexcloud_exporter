@@ -423,7 +423,7 @@ func (s *KeyStats) API(ch chan<- prometheus.Metric) error {
 			return err
 		}
 		ch <- prometheus.MustNewConstMetric(
-			KeyStatDates, prometheus.GaugeValue, 0, symbol,
+			KeyStatDates, prometheus.GaugeValue, 1, symbol,
 			toUnknown(strings.Trim(string(nextDividendDate), `"`)),
 			toUnknown(strings.Trim(string(exDividendDate), `"`)),
 			toUnknown(strings.Trim(string(nextEarningsDate), `"`)),
