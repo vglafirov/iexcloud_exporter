@@ -25,7 +25,10 @@ SOFTWARE.
 package model
 
 import (
+	"strings"
+
 	"github.com/prometheus/client_golang/prometheus"
+
 	// TODO: Replace with github.com/goinvest/iexcloud once https://github.com/goinvest/iexcloud/issues/41 is closed
 	iex "github.com/vglafirov/iexcloud"
 	"github.com/vglafirov/iexcloud_exporter/pkg/config"
@@ -291,6 +294,19 @@ var (
 		},
 		nil,
 	)
+
+	// KeyStatDates Expected ex date of the next dividend, Ex date of the last dividend, Expected next earnings report date
+	KeyStatDates = prometheus.NewDesc(
+		prometheus.BuildFQName(config.Namespace, "keystats", "dates"),
+		"Expected ex date of the next dividend, Ex date of the last dividend, Expected next earnings report date",
+		[]string{
+			"symbol",
+			"nextDividendDate",
+			"exDividendDate",
+			"nextEarningsDate",
+		},
+		nil,
+	)
 )
 
 // KeyStats data
@@ -298,6 +314,13 @@ type KeyStats struct {
 	Client   *iex.Client
 	Symbols  []string
 	KeyStats iex.KeyStats
+}
+
+func toUnknown(s string) string {
+	if s == "1929-10-24" {
+		return "unknown"
+	}
+	return s
 }
 
 // API Dividend API call
@@ -386,6 +409,24 @@ func (s *KeyStats) API(ch chan<- prometheus.Metric) error {
 		)
 		ch <- prometheus.MustNewConstMetric(
 			Day5ChangePercent, prometheus.GaugeValue, s.KeyStats.Day5ChangePercent, symbol,
+		)
+		nextDividendDate, err := s.KeyStats.NextDividendDate.MarshalJSON()
+		if err != nil {
+			return err
+		}
+		exDividendDate, err := s.KeyStats.ExDividendDate.MarshalJSON()
+		if err != nil {
+			return err
+		}
+		nextEarningsDate, err := s.KeyStats.NextEarningsDate.MarshalJSON()
+		if err != nil {
+			return err
+		}
+		ch <- prometheus.MustNewConstMetric(
+			KeyStatDates, prometheus.GaugeValue, 0, symbol,
+			toUnknown(strings.Trim(string(nextDividendDate), `"`)),
+			toUnknown(strings.Trim(string(exDividendDate), `"`)),
+			toUnknown(strings.Trim(string(nextEarningsDate), `"`)),
 		)
 
 	}
