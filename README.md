@@ -6,7 +6,7 @@
 
 Export Stock data, provided by IEX Cloud to Prometheus
 
-## Supported metrics groups
+## Supported metric groups
 * Price
 * Dividents
 * Keystats
