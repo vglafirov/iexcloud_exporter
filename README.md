@@ -84,6 +84,7 @@ Config file is in `json` format, which consists of `json` array of metric groups
 |---|---|---|
 |symbols|List of symbols|AAPL|
 |range|Date range|1y|
+
 *Date ranges format can be found in [API documentation](https://iexcloud.io/docs/api/#dividends-basic)*
 
 
