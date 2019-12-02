@@ -33,7 +33,7 @@ make
 
 ## Config
 
-Config file is in `json` format, which consists of `json` array of metrics groups (according to IEX Cloud API specs) with input parameters. Example:
+Config file is in `json` format, which consists of `json` array of metric groups (according to IEX Cloud API specs) with input parameters. Example:
 ```json
 {
   "metrics": [
