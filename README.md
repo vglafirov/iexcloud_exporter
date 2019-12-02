@@ -23,13 +23,13 @@ make
 |Name|Default|Description|Required|
 |---|---|---|---|
 |--web.listen-address|:9107|Address to listen on for web interface and telemetry|No|
-|---web.telemetry-path|/metrics|Path under which to expose metrics|No|
-|---kv.prefix|""|Prefix from which to expose key/value pairs|No|
-|---kv.filter|.*|Regex that determines which keys to expose|No|
-|---iexcloud.api_token|None|API Token for IEX Cloud account|**Yes**|
-|---iexcloud.endpoint|sandbox.iexapis.com|IEX Cloud API endpoint|No|
+|--web.telemetry-path|/metrics|Path under which to expose metrics|No|
+|--kv.prefix|""|Prefix from which to expose key/value pairs|No|
+|--kv.filter|.*|Regex that determines which keys to expose|No|
+|--iexcloud.api_token|None|API Token for IEX Cloud account|**Yes**|
+|--iexcloud.endpoint|sandbox.iexapis.com|IEX Cloud API endpoint|No|
 |--iexcloud.api_version|stable|IEX Cloud API version|No|
-|iexcloud.config|`$(pwd)/config.json`|Config path|**Yes**|
+|--iexcloud.config|`$(pwd)/config.json`|Config path|**Yes**|
 
 ## Config
 
